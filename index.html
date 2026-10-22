@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cari 20 Perbedaan - Taman Bunga Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-header {
+            font-family: 'Fredoka One', cursive;
+        }
+        /* Marker Styling */
+        .found-marker {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border: 3.5px solid #22c55e;
+            background-color: rgba(34, 197, 94, 0.35);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 20;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        .wrong-click-anim {
+            position: absolute;
+            width: 34px;
+            height: 34px;
+            border: 3px solid #ef4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 30;
+            animation: wrongRipple 0.5s forwards;
+        }
+        @keyframes wrongRipple {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-between p-2 md:p-4 overflow-x-hidden">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-6xl flex flex-col sm:flex-row items-center justify-between bg-slate-800/90 border border-slate-700 p-3 md:p-4 rounded-2xl shadow-xl mb-3 backdrop-blur-md">
+        <div class="flex items-center gap-3 mb-2 sm:mb-0">
+            <span class="text-3xl md:text-4xl">🌻</span>
+            <div>
+                <h1 class="font-header text-xl md:text-2xl text-amber-400 tracking-wide uppercase">Cari 20 Perbedaan: Taman Bunga</h1>
+                <p class="text-xs text-slate-400">Pastiin mata lu kagak min/rabun sebelum memencet <span class="text-emerald-400 font-bold">20 titik perbedaan</span> di taman ini!</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="flex items-center gap-4 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700/50">
+            <!-- Score Counter -->
+            <div class="text-center">
+                <span class="text-xs text-slate-400 uppercase font-bold block">Ketemu</span>
+                <span id="score-text" class="font-header text-xl md:text-2xl text-emerald-400">0 / 20</span>
+            </div>
+            <div class="h-8 w-[2px] bg-slate-700"></div>
+            <!-- Hearts / Lives -->
+            <div class="text-center">
+                <span class="text-xs text-slate-400 uppercase font-bold block">Nyawa</span>
+                <div id="lives-container" class="flex gap-1 text-lg md:text-xl mt-1">
+                    <span>❤️</span><span>❤️</span><span>❤️</span><span>❤️</span><span>❤️</span>
+                </div>
+            </div>
+            <div class="h-8 w-[2px] bg-slate-700"></div>
+            <!-- Reset Button -->
+            <button id="btn-restart-top" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs md:text-sm transition-all transform active:scale-95 shadow-md">
+                🔄 Ulangi
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="w-full max-w-6xl flex-1 flex flex-col items-center justify-center">
+        <!-- Canvas Containers Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            
+            <!-- Left Image (Original Photo) -->
+            <div class="flex flex-col items-center">
+                <div class="bg-slate-800 px-3 py-1 rounded-t-xl text-xs font-bold text-amber-300 border-t border-x border-slate-700 w-fit">
+                    📷 TAMAN BUNGA (Asli)
+                </div>
+                <div id="wrapper-left" class="relative w-full aspect-[16/9] bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl cursor-crosshair">
+                    <canvas id="canvas-left" class="w-full h-full object-contain"></canvas>
+                    <div id="markers-left" class="absolute inset-0 pointer-events-none"></div>
+                </div>
+            </div>
+
+            <!-- Right Image (Modified Photo) -->
+            <div class="flex flex-col items-center">
+                <div class="bg-slate-800 px-3 py-1 rounded-t-xl text-xs font-bold text-emerald-300 border-t border-x border-slate-700 w-fit">
+                    🧐 TAMAN EDITAN (Klik Perbedaannya Di Sini!)
+                </div>
+                <div id="wrapper-right" class="relative w-full aspect-[16/9] bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl cursor-crosshair">
+                    <canvas id="canvas-right" class="w-full h-full object-contain"></canvas>
+                    <div id="markers-right" class="absolute inset-0 pointer-events-none"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Clue / Status Footer -->
+        <div class="mt-3 text-center text-xs md:text-sm text-slate-400 bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700/40">
+            💡 <span class="text-amber-300 font-bold">Tips Lapan:</span> Amati perbedaan awan, warna bunga, kumbang, kincir angin, hingga barang receh yang nyasar di taman!
+        </div>
+    </main>
+
+    <!-- Modal Game Over / Win -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300">
+        <div class="bg-slate-800 border-2 border-slate-600 rounded-3xl max-w-lg w-full p-6 text-center shadow-2xl transform transition-all scale-95" id="modal-card">
+            
+            <!-- Emoji Header -->
+            <div id="modal-icon" class="text-6xl mb-3 animate-bounce">👓</div>
+            
+            <!-- Title -->
+            <h2 id="modal-title" class="font-header text-2xl md:text-3xl mb-2 text-red-500">
+                RABUN APA BUTA BANG?!
+            </h2>
+
+            <!-- Sarcastic Dialogue -->
+            <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-4 mb-6 text-left">
+                <p id="modal-body" class="text-slate-300 text-sm md:text-base leading-relaxed italic">
+                    "Pesan sarkas lapan..."
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-center gap-4">
+                <button id="btn-restart-modal" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-header text-lg px-6 py-3 rounded-2xl transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2">
+                    <span>🔁</span> Coba Lagi Lapan!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Synthesizer & Logic Script -->
+    <script>
+        /**
+         * Web Audio Synthesizer for Meme Sound Effects & Meme Victory Soundtracks
+         */
+        class MemeAudioSystem {
+            constructor() {
+                this.ctx = null;
+                this.isPlayingBgm = false;
+                this.bgmTimer = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playCorrect() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playWrong() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(110, now + 0.3);
+
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            playFailSound() {
+                this.init();
+                // "Sad Trombone" Meme Effect
+                const notes = [293.66, 277.18, 261.63, 246.94]; // D4, C#4, C4, B3
+                const durations = [0.25, 0.25, 0.25, 0.6];
+                let time = this.ctx.currentTime;
+
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, time);
+                    if (idx === 3) {
+                        osc.frequency.linearRampToValueAtTime(freq - 20, time + durations[idx]);
+                    }
+
+                    gain.gain.setValueAtTime(0.3, time);
+                    gain.gain.exponentialRampToValueAtTime(0.01, time + durations[idx]);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(time);
+                    osc.stop(time + durations[idx]);
+                    time += durations[idx];
+                });
+            }
+
+            playVictorySoundtrack() {
+                this.init();
+                this.stopBgm();
+                this.isPlayingBgm = true;
+
+                // Coffin Dance / Meme Track Synthesizer
+                const melody = [
+                    { note: 440.00, duration: 0.15 }, // A4
+                    { note: 440.00, duration: 0.15 },
+                    { note: 440.00, duration: 0.15 },
+                    { note: 523.25, duration: 0.2 },  // C5
+                    { note: 659.25, duration: 0.25 }, // E5
+                    { note: 587.33, duration: 0.2 },  // D5
+                    { note: 523.25, duration: 0.2 },  // C5
+                    { note: 493.88, duration: 0.25 }, // B4
+                    { note: 493.88, duration: 0.15 },
+                    { note: 523.25, duration: 0.15 },
+                    { note: 587.33, duration: 0.2 },  // D5
+                    { note: 659.25, duration: 0.4 }   // E5
+                ];
+
+                let step = 0;
+                const playNextNote = () => {
+                    if (!this.isPlayingBgm) return;
+
+                    const item = melody[step % melody.length];
+                    const now = this.ctx.currentTime;
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(item.note, now);
+
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + item.duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + item.duration);
+
+                    step++;
+                    this.bgmTimer = setTimeout(playNextNote, item.duration * 1000 + 30);
+                };
+
+                playNextNote();
+            }
+
+            stopBgm() {
+                this.isPlayingBgm = false;
+                if (this.bgmTimer) {
+                    clearTimeout(this.bgmTimer);
+                    this.bgmTimer = null;
+                }
+            }
+        }
+
+        const audioSys = new MemeAudioSystem();
+
+        // Target Dimensions
+        const CANVAS_WIDTH = 1000;
+        const CANVAS_HEIGHT = 562; // 16:9 Aspect ratio
+
+        // Procedural Flower Garden Scene Drawing
+        function drawFlowerGardenScene(ctx) {
+            // Sky Background
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            skyGradient.addColorStop(0, '#38bdf8');
+            skyGradient.addColorStop(1, '#bae6fd');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, 300);
+
+            // Sun
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.arc(880, 80, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sun Rays
+            ctx.strokeStyle = 'rgba(254, 224, 71, 0.4)';
+            ctx.lineWidth = 4;
+            for(let i=0; i<8; i++) {
+                const angle = (i * Math.PI) / 4;
+                ctx.beginPath();
+                ctx.moveTo(880 + Math.cos(angle)*60, 80 + Math.sin(angle)*60);
+                ctx.lineTo(880 + Math.cos(angle)*85, 80 + Math.sin(angle)*85);
+                ctx.stroke();
+            }
+
+            // Distant Mountains
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath();
+            ctx.moveTo(0, 300); ctx.lineTo(180, 180); ctx.lineTo(380, 300); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(250, 300); ctx.lineTo(480, 150); ctx.lineTo(720, 300); ctx.fill();
+
+            // Green Hill Horizon
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.ellipse(500, 380, 600, 150, 0, 0, Math.PI);
+            ctx.fill();
+
+            // Flower Field Grass Base
+            const grassGradient = ctx.createLinearGradient(0, 260, 0, CANVAS_HEIGHT);
+            grassGradient.addColorStop(0, '#16a34a');
+            grassGradient.addColorStop(1, '#15803d');
+            ctx.fillStyle = grassGradient;
+            ctx.fillRect(0, 260, CANVAS_WIDTH, CANVAS_HEIGHT - 260);
+
+            // Garden Pathway
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.moveTo(460, 260);
+            ctx.lineTo(540, 260);
+            ctx.lineTo(620, CANVAS_HEIGHT);
+            ctx.lineTo(380, CANVAS_HEIGHT);
+            ctx.closePath();
+            ctx.fill();
+
+            // Left Windmill Building
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(120, 160, 60, 100);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(110, 160); ctx.lineTo(150, 110); ctx.lineTo(190, 160); ctx.fill();
+
+            // Windmill Blades
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(100, 140); ctx.lineTo(200, 180);
+            ctx.moveTo(130, 200); ctx.lineTo(170, 120);
+            ctx.stroke();
+
+            // Clouds in Sky
+            drawCloud(ctx, 200, 80, 40);
+            drawCloud(ctx, 550, 100, 35);
+
+            // Flower Patch Left (Red Tulips)
+            for (let i = 0; i < 6; i++) {
+                drawTulip(ctx, 60 + i * 45, 340 + (i % 2) * 30, '#f43f5e');
+            }
+
+            // Flower Patch Right (Yellow Sunflowers)
+            for (let i = 0; i < 5; i++) {
+                drawSunflower(ctx, 680 + i * 55, 330 + (i % 2) * 25);
+            }
+
+            // Central Flowers (Purple Lavender / Flowers)
+            for (let i = 0; i < 6; i++) {
+                drawPetalFlower(ctx, 280 + i * 30, 440 + (i % 3) * 20, '#a855f7');
+                drawPetalFlower(ctx, 650 + i * 30, 460 + (i % 3) * 15, '#3b82f6');
+            }
+
+            // Flying Butterflies
+            drawButterfly(ctx, 320, 220, '#ec4899');
+            drawButterfly(ctx, 750, 210, '#f97316');
+        }
+
+        // Helper Drawing Functions
+        function drawCloud(ctx, x, y, r) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.arc(x + r * 0.7, y - r * 0.3, r * 0.8, 0, Math.PI * 2);
+            ctx.arc(x + r * 1.4, y, r * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawTulip(ctx, x, y, color) {
+            // Stem
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 40); ctx.stroke();
+            // Flower
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 14, 0, Math.PI);
+            ctx.lineTo(x - 14, y - 10);
+            ctx.lineTo(x - 5, y - 2);
+            ctx.lineTo(x, y - 12);
+            ctx.lineTo(x + 5, y - 2);
+            ctx.lineTo(x + 14, y - 10);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawSunflower(ctx, x, y) {
+            // Stem
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 50); ctx.stroke();
+            // Petals
+            ctx.fillStyle = '#eab308';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * Math.PI) / 4;
+                ctx.beginPath();
+                ctx.ellipse(x + Math.cos(angle) * 16, y + Math.sin(angle) * 16, 8, 4, angle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Center
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function drawPetalFlower(ctx, x, y, color) {
+            ctx.fillStyle = color;
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * Math.PI * 2) / 5;
+                ctx.beginPath();
+                ctx.arc(x + Math.cos(angle) * 10, y + Math.sin(angle) * 10, 7, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function drawButterfly(ctx, x, y, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.ellipse(x - 8, y - 5, 8, 5, -0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(x + 8, y - 5, 8, 5, 0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(x - 6, y + 4, 6, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(x + 6, y + 4, 6, 4, -0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(x - 1, y - 8, 2, 16);
+        }
+
+        // 20 Differences Details in Garden Scene
+        const DIFFERENCES = [
+            { id: 1,  x: 880, y: 80,  r: 30, type: 'MATAHAR_KACAMATA', desc: 'Matahari Pakai Kacamata Hitam' },
+            { id: 2,  x: 200, y: 80,  r: 28, type: 'AWAN_BURUNG', desc: 'Awan Berbentuk Burung / Tambahan Awan' },
+            { id: 3,  x: 150, y: 135, r: 25, type: 'KINCIR_WARNA', desc: 'Atap Kincir Angin Berubah Warna Biru' },
+            { id: 4,  x: 320, y: 220, r: 22, type: 'KUPU_MERAH', desc: 'Kupu-kupu Berubah Warna Hijau' },
+            { id: 5,  x: 60,  y: 340, r: 25, type: 'TULIP_HITAM', desc: 'Bunga Tulip Jadi Warna Hitam Meme' },
+            { id: 6,  x: 195, y: 370, r: 25, type: 'TABUNG_GAS', desc: 'Ada Tabung Gas Melon 3kg Nempel' },
+            { id: 7,  x: 480, y: 310, r: 30, type: 'ESTEH_JUMBO', desc: 'Es Teh Jumbo Plastik 3 Ribuan' },
+            { id: 8,  x: 680, y: 330, r: 25, type: 'SUNFLOWER_SMILE', desc: 'Bunga Matahari Ada Wajah Tersenyum' },
+            { id: 9,  x: 900, y: 355, r: 25, type: 'KERUPUK_KALENG', desc: 'Kaleng Kerupuk Biru Legendaris' },
+            { id: 10, x: 580, y: 480, r: 30, type: 'INDOMIE_GORENG', desc: 'Bungkus Indomie Goreng Spesial' },
+            { id: 11, x: 420, y: 420, r: 28, type: 'SENDAL_SWALLOW', desc: 'Sendal Swallow Hijau Terciduk' },
+            { id: 12, x: 310, y: 440, r: 25, type: 'KUMBANG_KECIL', desc: 'Kumbang Merah / Ladybug Raksasa' },
+            { id: 13, x: 750, y: 210, r: 22, type: 'KUPU_RABUN', desc: 'Kupu-Kupu Kanan Hilang' },
+            { id: 14, x: 500, y: 200, r: 30, type: 'PELANGI_MINI', desc: 'Pelangi Mini Lucu di Langit' },
+            { id: 15, x: 800, y: 480, r: 28, type: 'KUCING_MEME', desc: 'Kucing Meme Putih Ngintip' },
+            { id: 16, x: 180, y: 180, r: 25, type: 'MOUNTAIN_PEAK', desc: 'Puncak Gunung Ada Salju Putih' },
+            { id: 17, x: 370, y: 160, r: 28, type: 'BURUNG_CAMAR', desc: 'Burung Terbang di Atas Gunung' },
+            { id: 18, x: 670, y: 460, r: 25, type: 'BUNGA_ORANGE', desc: 'Bunga Biru Berubah Warna Orange' },
+            { id: 19, x: 550, y: 100, r: 25, type: 'STIKER_HOAX', desc: 'Stiker HOAX Merah di Awan' },
+            { id: 20, x: 480, y: 530, r: 25, type: 'AYAM_WARNA', desc: 'Ayam Warna-warni Pasar Malam' }
+        ];
+
+        // Sarcastic insult dialogues for Loss
+        const LOSE_INSULTS = [
+            "Aduuh lapan, mata lu dipake cuma buat pajangan doang apa gimana?! Masa 5 kali pencet salah semua! Ini taman bunga indah, bukan tes ketebalan kacamata minus!",
+            "RABUN APA BUTA BANG?! 👓 Bola mata lu kagak dituker sama kelereng kan pas kecil? Masa benda sebesar ini di taman kagak kelihatan, info tukang urut mata terdekat!",
+            "DASAR LAPAN KELAS BERAT! ❌ 5 Kali klik ngawur tanpa dosa. Mending lu cuci muka pake air bunga biar agak melek sikit mata lu itu!",
+            "FIX MATAMU MINUS 1000! 👁️‍🗨️ Mending matikan HP, terus pergi ke optik sekarang. Ini foto jelas banget bedanya padahal, aduh ampun deh Lapan!",
+            "Nyerah aja bang! Mata rabun ayam gini sok-sokan mau main game detektif taman bunga. Poin lu mengenaskan sekali!"
+        ];
+
+        // Sarcastic congratulations for Win
+        const WIN_INSULTS = [
+            "SELAMAT YA LAPAN! 🎉 Akhirnya setelah bikin bola mata lu mau keluar, nemu juga 20 perbedaan di taman bunga ini! Tapi jujur aja, lu pake pembesar lup atau bantuan dukun nih?",
+            "ANJAYYY MATANYA JELI JUGA SI ABANG! 🦅 Selamat menang! Walaupun mukamu masih kelihatan kayak orang kurang tidur gara-gara melototin taman 3 jam!",
+            "HOREEE MENANG! 🏆 Selamat ya, ternyata mata lu kagak rabun-rabun amat! Tapi inget bang, ini cuma game bunga, jangan sombong dulu terus dipajang di CV kerjaan!",
+            "LUAR BIASA EL MATA ELANG! 👁️ 20 Perbedaan berhasil diringkus! Selamat deh, sekarang mending istirahat, kasihan mata lu udah merah melototin foto dari tadi!"
+        ];
+
+        // Game State Variables
+        let foundIds = [];
+        let lives = 5;
+        let isGameOver = false;
+
+        // DOM Elements
+        const canvasLeft = document.getElementById('canvas-left');
+        const canvasRight = document.getElementById('canvas-right');
+        const ctxLeft = canvasLeft.getContext('2d');
+        const ctxRight = canvasRight.getContext('2d');
+
+        const wrapperRight = document.getElementById('wrapper-right');
+        const wrapperLeft = document.getElementById('wrapper-left');
+        const markersLeft = document.getElementById('markers-left');
+        const markersRight = document.getElementById('markers-right');
+
+        const scoreText = document.getElementById('score-text');
+        const livesContainer = document.getElementById('lives-container');
+
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalIcon = document.getElementById('modal-icon');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const btnRestartTop = document.getElementById('btn-restart-top');
+        const btnRestartModal = document.getElementById('btn-restart-modal');
+
+        // Set canvas dimensions
+        canvasLeft.width = CANVAS_WIDTH;
+        canvasLeft.height = CANVAS_HEIGHT;
+        canvasRight.width = CANVAS_WIDTH;
+        canvasRight.height = CANVAS_HEIGHT;
+
+        /**
+         * Render Flower Garden Photos & 20 Edits
+         */
+        function renderCanvases() {
+            ctxLeft.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctxRight.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw Base Garden Photo on Left & Right
+            drawFlowerGardenScene(ctxLeft);
+            drawFlowerGardenScene(ctxRight);
+
+            // Apply 20 Differences exclusively on CANVAS RIGHT
+            DIFFERENCES.forEach(diff => {
+                switch(diff.type) {
+                    case 'MATAHAR_KACAMATA':
+                        ctxRight.fillStyle = '#000000';
+                        ctxRight.fillRect(860, 70, 40, 15); // Sunglasses
+                        ctxRight.fillRect(865, 85, 12, 10);
+                        ctxRight.fillRect(883, 85, 12, 10);
+                        break;
+                    case 'AWAN_BURUNG':
+                        ctxRight.fillStyle = '#0284c7';
+                        ctxRight.beginPath(); ctxRight.arc(230, 60, 10, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                    case 'KINCIR_WARNA':
+                        ctxRight.fillStyle = '#0284c7';
+                        ctxRight.beginPath();
+                        ctxRight.moveTo(110, 160); ctxRight.lineTo(150, 110); ctxRight.lineTo(190, 160); ctxRight.fill();
+                        break;
+                    case 'KUPU_MERAH':
+                        drawButterfly(ctxRight, 320, 220, '#22c55e'); // Green butterfly
+                        break;
+                    case 'TULIP_HITAM':
+                        drawTulip(ctxRight, 60, 340, '#000000'); // Black tulip
+                        break;
+                    case 'TABUNG_GAS':
+                        ctxRight.fillStyle = '#84cc16'; // Hijau Melon 3kg
+                        ctxRight.beginPath(); ctxRight.ellipse(195, 370, 18, 24, 0, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                    case 'ESTEH_JUMBO':
+                        ctxRight.fillStyle = '#b45309';
+                        ctxRight.fillRect(470, 290, 25, 38);
+                        break;
+                    case 'SUNFLOWER_SMILE':
+                        ctxRight.fillStyle = '#000000';
+                        ctxRight.beginPath(); ctxRight.arc(676, 326, 2, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.beginPath(); ctxRight.arc(684, 326, 2, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.beginPath(); ctxRight.arc(680, 332, 5, 0, Math.PI); ctxRight.stroke();
+                        break;
+                    case 'KERUPUK_KALENG':
+                        ctxRight.fillStyle = '#0284c7';
+                        ctxRight.fillRect(880, 330, 40, 50);
+                        break;
+                    case 'INDOMIE_GORENG':
+                        ctxRight.fillStyle = '#eab308';
+                        ctxRight.fillRect(560, 465, 40, 28);
+                        ctxRight.fillStyle = '#dc2626';
+                        ctxRight.fillRect(560, 473, 40, 6);
+                        break;
+                    case 'SENDAL_SWALLOW':
+                        ctxRight.fillStyle = '#16a34a';
+                        ctxRight.fillRect(400, 410, 35, 18);
+                        break;
+                    case 'KUMBANG_KECIL':
+                        ctxRight.fillStyle = '#ef4444';
+                        ctxRight.beginPath(); ctxRight.arc(310, 440, 12, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.fillStyle = '#000000';
+                        ctxRight.beginPath(); ctxRight.arc(308, 438, 2, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.beginPath(); ctxRight.arc(312, 442, 2, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                    case 'KUPU_RABUN':
+                        ctxRight.fillStyle = '#16a34a'; // Erase butterfly
+                        ctxRight.beginPath(); ctxRight.arc(750, 210, 20, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                    case 'PELANGI_MINI':
+                        ctxRight.strokeStyle = '#ef4444'; ctxRight.lineWidth = 3;
+                        ctxRight.beginPath(); ctxRight.arc(500, 200, 20, Math.PI, 0); ctxRight.stroke();
+                        ctxRight.strokeStyle = '#eab308';
+                        ctxRight.beginPath(); ctxRight.arc(500, 200, 16, Math.PI, 0); ctxRight.stroke();
+                        break;
+                    case 'KUCING_MEME':
+                        ctxRight.fillStyle = '#ffffff';
+                        ctxRight.beginPath(); ctxRight.arc(800, 480, 18, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.fillStyle = '#000000';
+                        ctxRight.beginPath(); ctxRight.arc(794, 476, 3, 0, Math.PI*2); ctxRight.fill();
+                        ctxRight.beginPath(); ctxRight.arc(806, 476, 3, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                    case 'MOUNTAIN_PEAK':
+                        ctxRight.fillStyle = '#ffffff';
+                        ctxRight.beginPath();
+                        ctxRight.moveTo(480, 150); ctxRight.lineTo(450, 180); ctxRight.lineTo(510, 180); ctxRight.fill();
+                        break;
+                    case 'BURUNG_CAMAR':
+                        ctxRight.strokeStyle = '#0f172a'; ctxRight.lineWidth = 3;
+                        ctxRight.beginPath(); ctxRight.moveTo(360, 160); ctxRight.quadraticCurveTo(365, 150, 370, 160);
+                        ctxRight.quadraticCurveTo(375, 150, 380, 160); ctxRight.stroke();
+                        break;
+                    case 'BUNGA_ORANGE':
+                        drawPetalFlower(ctxRight, 650, 460, '#f97316');
+                        break;
+                    case 'STIKER_HOAX':
+                        ctxRight.fillStyle = '#dc2626';
+                        ctxRight.font = 'bold 18px Arial';
+                        ctxRight.fillText('HOAX', 530, 105);
+                        break;
+                    case 'AYAM_WARNA':
+                        ctxRight.fillStyle = '#ec4899'; // Pink chick
+                        ctxRight.beginPath(); ctxRight.arc(480, 530, 12, 0, Math.PI*2); ctxRight.fill();
+                        break;
+                }
+            });
+        }
+
+        /**
+         * Handle Click on Canvas/Image
+         */
+        function handleImageClick(e, isRightSide) {
+            if (isGameOver) return;
+
+            const wrapper = isRightSide ? wrapperRight : wrapperLeft;
+            const rect = wrapper.getBoundingClientRect();
+            
+            const clickX = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+            const clickY = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+
+            let matchFound = false;
+
+            for (let diff of DIFFERENCES) {
+                if (foundIds.includes(diff.id)) continue;
+
+                const dist = Math.hypot(clickX - diff.x, clickY - diff.y);
+
+                if (dist <= diff.r + 15) { // Tolerance
+                    matchFound = true;
+                    foundIds.push(diff.id);
+                    audioSys.playCorrect();
+
+                    addMarker(diff.x, diff.y);
+                    updateScore();
+
+                    if (foundIds.length === DIFFERENCES.length) {
+                        triggerWin();
+                    }
+                    break;
+                }
+            }
+
+            if (!matchFound) {
+                lives--;
+                audioSys.playWrong();
+                showWrongAnimation(e.clientX - rect.left, e.clientY - rect.top, wrapper);
+                updateLivesUI();
+
+                if (lives <= 0) {
+                    triggerGameOver();
+                }
+            }
+        }
+
+        function addMarker(canvasX, canvasY) {
+            const pctX = (canvasX / CANVAS_WIDTH) * 100;
+            const pctY = (canvasY / CANVAS_HEIGHT) * 100;
+
+            const markL = document.createElement('div');
+            markL.className = 'found-marker';
+            markL.style.left = pctX + '%';
+            markL.style.top = pctY + '%';
+
+            const markR = document.createElement('div');
+            markR.className = 'found-marker';
+            markR.style.left = pctX + '%';
+            markR.style.top = pctY + '%';
+
+            markersLeft.appendChild(markL);
+            markersRight.appendChild(markR);
+        }
+
+        function showWrongAnimation(posX, posY, parentElem) {
+            const wrongEl = document.createElement('div');
+            wrongEl.className = 'wrong-click-anim';
+            wrongEl.style.left = posX + 'px';
+            wrongEl.style.top = posY + 'px';
+            parentElem.appendChild(wrongEl);
+
+            setTimeout(() => {
+                wrongEl.remove();
+            }, 550);
+        }
+
+        function updateScore() {
+            scoreText.textContent = `${foundIds.length} / ${DIFFERENCES.length}`;
+        }
+
+        function updateLivesUI() {
+            let heartsHtml = '';
+            for (let i = 0; i < 5; i++) {
+                if (i < lives) {
+                    heartsHtml += '<span class="transition-transform transform scale-110">❤️</span>';
+                } else {
+                    heartsHtml += '<span class="opacity-30 grayscale">💔</span>';
+                }
+            }
+            livesContainer.innerHTML = heartsHtml;
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            audioSys.playFailSound();
+
+            const randomInsult = LOSE_INSULTS[Math.floor(Math.random() * LOSE_INSULTS.length)];
+
+            modalIcon.textContent = '👓💥';
+            modalTitle.textContent = 'RABUN APA BUTA BANG?!';
+            modalTitle.className = 'font-header text-2xl md:text-3xl mb-2 text-red-500';
+            modalBody.textContent = `"${randomInsult}"`;
+
+            modalOverlay.classList.remove('hidden');
+        }
+
+        function triggerWin() {
+            isGameOver = true;
+            audioSys.playVictorySoundtrack();
+
+            const randomWinText = WIN_INSULTS[Math.floor(Math.random() * WIN_INSULTS.length)];
+
+            modalIcon.textContent = '😎🎉';
+            modalTitle.textContent = 'MATA ELANG NIH YE! (TAPI TETEP LAPAN)';
+            modalTitle.className = 'font-header text-2xl md:text-3xl mb-2 text-emerald-400';
+            modalBody.textContent = `"${randomWinText}"`;
+
+            modalOverlay.classList.remove('hidden');
+        }
+
+        function resetGame() {
+            audioSys.stopBgm();
+            foundIds = [];
+            lives = 5;
+            isGameOver = false;
+
+            markersLeft.innerHTML = '';
+            markersRight.innerHTML = '';
+
+            updateScore();
+            updateLivesUI();
+            modalOverlay.classList.add('hidden');
+
+            renderCanvases();
+        }
+
+        // Attach Event Listeners
+        wrapperLeft.addEventListener('click', (e) => handleImageClick(e, false));
+        wrapperRight.addEventListener('click', (e) => handleImageClick(e, true));
+
+        btnRestartTop.addEventListener('click', resetGame);
+        btnRestartModal.addEventListener('click', resetGame);
+
+        window.onload = () => {
+            renderCanvases();
+            updateLivesUI();
+        };
+
+        window.addEventListener('resize', () => {
+            renderCanvases();
+        });
+    </script>
+</body>
+</html>
